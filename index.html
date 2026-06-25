@@ -15,6 +15,8 @@
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+    touch-action: none;
   }
 
   /* 顶部信息栏 */
@@ -260,13 +262,13 @@
   var skybox = new THREE.Mesh(cubeGeometry, materialArray);
   scene.add(skybox);
 
-  // ====== 鼠标/触摸交互 ======
+  // ====== 拖拽交互 ======
   var isDragging = false;
-  var previousMouse = { x: 0, y: 0 };
+  var prevX = 0, prevY = 0;
   var lon = 0, lat = 0.1;
-  var phiSpeed = 0.5;
-  var thetaSpeed = 0.5;
+  var speed = 0.5;
   var minFov = 20, maxFov = 120;
+  var isTouch = 'ontouchstart' in window;
 
   function updateCamera() {
     var phi = THREE.MathUtils.degToRad(lon);
@@ -279,34 +281,77 @@
   }
   updateCamera();
 
-  // 鼠标拖拽（已反转方向）
-  renderer.domElement.style.touchAction = 'none';
-  renderer.domElement.addEventListener('pointerdown', function(e) {
-    e.preventDefault();
+  function dragStart(x, y) {
     isDragging = true;
-    previousMouse = { x: e.clientX, y: e.clientY };
-    renderer.domElement.style.cursor = 'grabbing';
+    prevX = x; prevY = y;
     document.getElementById('hint').style.opacity = '0';
-  });
-
-  window.addEventListener('pointermove', function(e) {
+  }
+  function dragMove(x, y) {
     if (!isDragging) return;
-    var dx = e.clientX - previousMouse.x;
-    var dy = e.clientY - previousMouse.y;
-    // 反转方向：lon += dx（天然拖拽方向）
-    lon += dx * phiSpeed;
-    lat -= dy * thetaSpeed;
+    lon += (x - prevX) * speed;
+    lat -= (y - prevY) * speed;
     lat = Math.max(-85, Math.min(85, lat));
-    previousMouse = { x: e.clientX, y: e.clientY };
+    prevX = x; prevY = y;
     updateCamera();
-  });
+  }
+  function dragEnd() { isDragging = false; }
 
-  window.addEventListener('pointerup', function() {
-    isDragging = false;
+  // 桌面：pointer 事件
+  renderer.domElement.addEventListener('pointerdown', function(e) {
+    if (isTouch) return;
+    e.preventDefault();
+    renderer.domElement.setPointerCapture(e.pointerId);
+    dragStart(e.clientX, e.clientY);
+    renderer.domElement.style.cursor = 'grabbing';
+  });
+  renderer.domElement.addEventListener('pointermove', function(e) {
+    if (isTouch) return;
+    dragMove(e.clientX, e.clientY);
+  });
+  renderer.domElement.addEventListener('pointerup', function(e) {
+    if (isTouch) return;
+    dragEnd();
     renderer.domElement.style.cursor = 'grab';
   });
 
-  // 滚轮缩放
+  // 移动端：直接 touch 事件（更可靠）
+  renderer.domElement.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) {
+      e.preventDefault();
+      dragStart(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    if (e.touches.length === 2) {
+      dragEnd();
+      initialPinchDistance = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      initialFov = camera.fov;
+    }
+  }, { passive: false });
+
+  renderer.domElement.addEventListener('touchmove', function(e) {
+    if (e.touches.length === 1) {
+      e.preventDefault();
+      dragMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    if (e.touches.length === 2 && initialPinchDistance > 0) {
+      e.preventDefault();
+      var dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      camera.fov = Math.max(minFov, Math.min(maxFov, initialFov * initialPinchDistance / dist));
+      camera.updateProjectionMatrix();
+    }
+  }, { passive: false });
+
+  renderer.domElement.addEventListener('touchend', function() {
+    dragEnd();
+    initialPinchDistance = 0;
+  });
+
+  // 滚轮缩放（桌面）
   renderer.domElement.addEventListener('wheel', function(e) {
     e.preventDefault();
     camera.fov += e.deltaY * 0.05;
@@ -314,36 +359,8 @@
     camera.updateProjectionMatrix();
   }, { passive: false });
 
-  // 触摸双指缩放
   var initialPinchDistance = 0;
   var initialFov = 75;
-
-  renderer.domElement.addEventListener('touchstart', function(e) {
-    if (e.touches.length === 2) {
-      initialPinchDistance = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      initialFov = camera.fov;
-    }
-  }, { passive: true });
-
-  renderer.domElement.addEventListener('touchmove', function(e) {
-    if (e.touches.length === 2 && initialPinchDistance > 0) {
-      var dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      var scale = initialPinchDistance / dist;
-      camera.fov = Math.max(minFov, Math.min(maxFov, initialFov * scale));
-      camera.updateProjectionMatrix();
-    }
-  }, { passive: true });
-
-  renderer.domElement.addEventListener('touchend', function() {
-    initialPinchDistance = 0;
-  });
-
   renderer.domElement.style.cursor = 'grab';
 
   // ====== 场景加载 ======

@@ -242,7 +242,7 @@
 
   var renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setClearColor(0x000000);
   document.body.appendChild(renderer.domElement);
 
@@ -264,8 +264,8 @@
   var isDragging = false;
   var previousMouse = { x: 0, y: 0 };
   var lon = 0, lat = 0.1;
-  var phiSpeed = 0.003;
-  var thetaSpeed = 0.003;
+  var phiSpeed = 0.5;
+  var thetaSpeed = 0.5;
   var minFov = 20, maxFov = 120;
 
   function updateCamera() {
@@ -280,7 +280,9 @@
   updateCamera();
 
   // 鼠标拖拽（已反转方向）
+  renderer.domElement.style.touchAction = 'none';
   renderer.domElement.addEventListener('pointerdown', function(e) {
+    e.preventDefault();
     isDragging = true;
     previousMouse = { x: e.clientX, y: e.clientY };
     renderer.domElement.style.cursor = 'grabbing';
@@ -292,8 +294,8 @@
     var dx = e.clientX - previousMouse.x;
     var dy = e.clientY - previousMouse.y;
     // 反转方向：lon += dx（天然拖拽方向）
-    lon += dx * phiSpeed * 100;
-    lat -= dy * thetaSpeed * 100;
+    lon += dx * phiSpeed;
+    lat -= dy * thetaSpeed;
     lat = Math.max(-85, Math.min(85, lat));
     previousMouse = { x: e.clientX, y: e.clientY };
     updateCamera();

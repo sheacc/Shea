@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>尚城国际3-1403 全景水电图</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: #000;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 顶部信息栏 */
+  .top-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .top-bar > * { pointer-events: auto; }
+
+  .scene-title {
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 1px;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-group button {
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .btn-group button:hover {
+    background: rgba(255,255,255,0.2);
+    border-color: rgba(255,255,255,0.3);
+  }
+  .btn-group button:active {
+    transform: scale(0.92);
+  }
+
+  /* 底部场景选择 */
+  .bottom-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .scene-selector {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    padding: 10px 14px;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.1);
+    max-width: 78vw;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scene-selector::-webkit-scrollbar { display: none; }
+
+  .scene-dot-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 8px;
+    transition: background 0.2s;
+    min-width: 48px;
+  }
+  .scene-dot-item:hover {
+    background: rgba(255,255,255,0.08);
+  }
+  .scene-dot-item .dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    transition: all 0.25s;
+    border: 2px solid transparent;
+    flex-shrink: 0;
+  }
+  .scene-dot-item.active .dot {
+    background: #4fc3f7;
+    border-color: rgba(255,255,255,0.7);
+    box-shadow: 0 0 10px rgba(79,195,247,0.5);
+    transform: scale(1.3);
+  }
+  .scene-dot-item .label {
+    color: rgba(255,255,255,0.45);
+    font-size: 11px;
+    white-space: nowrap;
+    transition: color 0.25s;
+    line-height: 1;
+  }
+  .scene-dot-item.active .label {
+    color: rgba(255,255,255,0.9);
+  }
+  .scene-dot-item:hover .label {
+    color: rgba(255,255,255,0.7);
+  }
+
+  .nav-btn {
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    margin-bottom: 6px;
+  }
+  .nav-btn:hover {
+    background: rgba(255,255,255,0.2);
+  }
+  .nav-btn:active { transform: scale(0.92); }
+
+  /* 加载提示 */
+  .loading {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 200;
+    color: #fff;
+    font-size: 14px;
+    background: rgba(0,0,0,0.6);
+    padding: 10px 24px;
+    border-radius: 20px;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .loading.hidden { opacity: 0; }
+
+  /* 操作提示 */
+  .hint {
+    position: fixed;
+    bottom: 110px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    color: rgba(255,255,255,0.45);
+    font-size: 12px;
+    pointer-events: none;
+    transition: opacity 0.8s;
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="scene-title" id="sceneTitle">大厅</div>
+  <div class="btn-group">
+    <button id="btnFullscreen" title="全屏">⛶</button>
+  </div>
+</div>
+
+<div class="loading" id="loading">加载中...</div>
+<div class="hint" id="hint">🖱 拖拽旋转 &nbsp;|&nbsp; 滚轮缩放 &nbsp;|&nbsp; F 全屏</div>
+
+<div class="bottom-bar">
+  <button class="nav-btn" id="btnPrev" title="上一个">◀</button>
+  <div class="scene-selector" id="sceneDots"></div>
+  <button class="nav-btn" id="btnNext" title="下一个">▶</button>
+</div>
+
+<!-- Three.js CDN (兼容所有浏览器，无需 importmap) -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<script>
+(function() {
+  'use strict';
+
+  // ====== 场景配置（次卧/书房名称已互换） ======
+  var SCENES = [
+    { display: '厨房',  dir: '01_厨房4' },
+    { display: '餐厅',  dir: '02_餐厅3' },
+    { display: '大厅',  dir: '03_大厅5' },
+    { display: '阳台',  dir: '04_阳台2' },
+    { display: '书房',  dir: '05_次卧3' },   // 显示"书房"，实际加载原"次卧3"的图
+    { display: '过道干区', dir: '06_过道干区1' },
+    { display: '公卫',  dir: '07_公卫3' },
+    { display: '次卧',  dir: '08_书房3' },   // 显示"次卧"，实际加载原"书房3"的图
+    { display: '主卫',  dir: '09_主卫3' },
+    { display: '主卧',  dir: '10_主卧3' },
+  ];
+
+  // ====== 全局状态 ======
+  var currentIndex = 2; // 默认大厅
+  var isLoading = false;
+
+  // ====== Three.js 初始化 ======
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 0, 0.1);
+
+  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x000000);
+  document.body.appendChild(renderer.domElement);
+
+  // ====== Skybox 材质 ======
+  var materialArray = [
+    new THREE.MeshBasicMaterial({ side: THREE.BackSide }), // right
+    new THREE.MeshBasicMaterial({ side: THREE.BackSide }), // left
+    new THREE.MeshBasicMaterial({ side: THREE.BackSide }), // up
+    new THREE.MeshBasicMaterial({ side: THREE.BackSide }), // down
+    new THREE.MeshBasicMaterial({ side: THREE.BackSide }), // front
+    new THREE.MeshBasicMaterial({ side: THREE.BackSide }), // back
+  ];
+
+  var cubeGeometry = new THREE.BoxGeometry(20, 20, 20);
+  var skybox = new THREE.Mesh(cubeGeometry, materialArray);
+  scene.add(skybox);
+
+  // ====== 鼠标/触摸交互 ======
+  var isDragging = false;
+  var previousMouse = { x: 0, y: 0 };
+  var lon = 0, lat = 0.1;
+  var phiSpeed = 0.003;
+  var thetaSpeed = 0.003;
+  var minFov = 20, maxFov = 120;
+
+  function updateCamera() {
+    var phi = THREE.MathUtils.degToRad(lon);
+    var theta = THREE.MathUtils.degToRad(lat);
+    var radius = 0.1;
+    camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
+    camera.position.y = radius * Math.sin(theta);
+    camera.position.z = radius * Math.cos(phi) * Math.cos(theta);
+    camera.lookAt(0, 0, 0);
+  }
+  updateCamera();
+
+  // 鼠标拖拽（已反转方向）
+  renderer.domElement.addEventListener('pointerdown', function(e) {
+    isDragging = true;
+    previousMouse = { x: e.clientX, y: e.clientY };
+    renderer.domElement.style.cursor = 'grabbing';
+    document.getElementById('hint').style.opacity = '0';
+  });
+
+  window.addEventListener('pointermove', function(e) {
+    if (!isDragging) return;
+    var dx = e.clientX - previousMouse.x;
+    var dy = e.clientY - previousMouse.y;
+    // 反转方向：lon += dx（天然拖拽方向）
+    lon += dx * phiSpeed * 100;
+    lat -= dy * thetaSpeed * 100;
+    lat = Math.max(-85, Math.min(85, lat));
+    previousMouse = { x: e.clientX, y: e.clientY };
+    updateCamera();
+  });
+
+  window.addEventListener('pointerup', function() {
+    isDragging = false;
+    renderer.domElement.style.cursor = 'grab';
+  });
+
+  // 滚轮缩放
+  renderer.domElement.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    camera.fov += e.deltaY * 0.05;
+    camera.fov = Math.max(minFov, Math.min(maxFov, camera.fov));
+    camera.updateProjectionMatrix();
+  }, { passive: false });
+
+  // 触摸双指缩放
+  var initialPinchDistance = 0;
+  var initialFov = 75;
+
+  renderer.domElement.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 2) {
+      initialPinchDistance = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      initialFov = camera.fov;
+    }
+  }, { passive: true });
+
+  renderer.domElement.addEventListener('touchmove', function(e) {
+    if (e.touches.length === 2 && initialPinchDistance > 0) {
+      var dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      var scale = initialPinchDistance / dist;
+      camera.fov = Math.max(minFov, Math.min(maxFov, initialFov * scale));
+      camera.updateProjectionMatrix();
+    }
+  }, { passive: true });
+
+  renderer.domElement.addEventListener('touchend', function() {
+    initialPinchDistance = 0;
+  });
+
+  renderer.domElement.style.cursor = 'grab';
+
+  // ====== 场景加载 ======
+  var loadingEl = document.getElementById('loading');
+  var titleEl = document.getElementById('sceneTitle');
+
+  function loadScene(index) {
+    if (isLoading || index < 0 || index >= SCENES.length) return;
+    isLoading = true;
+    currentIndex = index;
+    var s = SCENES[index];
+
+    loadingEl.classList.remove('hidden');
+    titleEl.textContent = s.display;
+
+    var faces = ['l', 'r', 'u', 'd', 'f', 'b'];
+    var loadedCount = 0;
+    var textures = [];
+
+    faces.forEach(function(face, i) {
+      var tex = new THREE.TextureLoader().load(
+        s.dir + '/pano_' + face + '.jpg',
+        function(texture) {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          // 修正 BackSide 渲染导致的水平镜像
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.repeat.x = -1;
+          texture.offset.x = 1;
+          textures[i] = texture;
+          loadedCount++;
+          checkComplete();
+        },
+        undefined,
+        function(err) {
+          console.error('加载失败: pano_' + face + '.jpg', err);
+          loadedCount++;
+          checkComplete();
+        }
+      );
+    });
+
+    function checkComplete() {
+      if (loadedCount === 6) {
+        materialArray[0].map = textures[0];
+        materialArray[1].map = textures[1];
+        materialArray[2].map = textures[2];
+        materialArray[3].map = textures[3];
+        materialArray[4].map = textures[4];
+        materialArray[5].map = textures[5];
+        materialArray.forEach(function(m) { m.needsUpdate = true; });
+        loadingEl.classList.add('hidden');
+        isLoading = false;
+        updateDots();
+      }
+    }
+  }
+
+  // ====== 底部导航（圆点 + 名称标签） ======
+  var dotsContainer = document.getElementById('sceneDots');
+
+  function buildDots() {
+    dotsContainer.innerHTML = '';
+    SCENES.forEach(function(s, i) {
+      var item = document.createElement('div');
+      item.className = 'scene-dot-item';
+
+      var dot = document.createElement('div');
+      dot.className = 'dot';
+
+      var label = document.createElement('span');
+      label.className = 'label';
+      label.textContent = s.display;
+
+      item.appendChild(dot);
+      item.appendChild(label);
+
+      item.addEventListener('click', function() {
+        if (i !== currentIndex) loadScene(i);
+      });
+
+      dotsContainer.appendChild(item);
+    });
+  }
+
+  function updateDots() {
+    var items = dotsContainer.querySelectorAll('.scene-dot-item');
+    items.forEach(function(item, i) {
+      if (i === currentIndex) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+  }
+
+  buildDots();
+
+  // ====== 导航按钮 ======
+  document.getElementById('btnPrev').addEventListener('click', function() {
+    loadScene((currentIndex - 1 + SCENES.length) % SCENES.length);
+  });
+  document.getElementById('btnNext').addEventListener('click', function() {
+    loadScene((currentIndex + 1) % SCENES.length);
+  });
+
+  // ====== 键盘导航 ======
+  window.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') {
+      loadScene((currentIndex - 1 + SCENES.length) % SCENES.length);
+    } else if (e.key === 'ArrowRight') {
+      loadScene((currentIndex + 1) % SCENES.length);
+    } else if (e.key === 'f' || e.key === 'F') {
+      toggleFullscreen();
+    }
+  });
+
+  // ====== 全屏 ======
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.body.requestFullscreen().catch(function(){});
+    } else {
+      document.exitFullscreen();
+    }
+  }
+  document.getElementById('btnFullscreen').addEventListener('click', toggleFullscreen);
+
+  // ====== 自适应 ======
+  window.addEventListener('resize', function() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // ====== 渲染循环 ======
+  function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // ====== 初始加载 ======
+  loadScene(currentIndex);
+
+  // 几秒后淡出提示
+  setTimeout(function() {
+    document.getElementById('hint').style.opacity = '0';
+  }, 6000);
+
+  console.log('尚城国际3-1403 全景水电图查看器已就绪');
+
+})();
+</script>
+</body>
+</html>
